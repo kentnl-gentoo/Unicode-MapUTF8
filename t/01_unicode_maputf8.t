@@ -121,8 +121,9 @@ sub test_general {
     };
 	if ($@) { return "Failed to convert UTF8 text to $source_charset: $@" }
 	eval { 
-        my $result_string = from_utf8({ -string => $utf8_string, 
-                                       -charset => $source_charset }); 
+        my $result_string = from_utf8({ '-string' => $utf8_string, 
+                                       '-charset' => $source_charset,
+                                       }); 
         if ($source_string ne $result_string) {
            die ("conversion from UTF8 to '$source_charset' resulted in unexpected output. Expected '" . hexout($source_string) . "' but got '" . hexout($result_string) . "'\n");
         }
@@ -132,7 +133,8 @@ sub test_general {
 
 	eval { 
            my $result_string = from_utf8({ -string => $source_string, 
-                                          -charset => $source_charset}); 
+                                          -charset => $source_charset,
+                                          }); 
            if ($source_string ne to_utf8({ -string => $result_string, 
                                           -charset => $source_charset })) {
                 die ("input and output strings differed");

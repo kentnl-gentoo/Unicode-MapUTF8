@@ -1,5 +1,9 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.02 2000.10.22 Bug fix to 'from_utf8' method and load time
+                detection of Unicode::Map8 supported character
+                set encodings
+
 1.01 2000.10.02 Initial public release
 
 Provides an adapter layer between core routines for converting
