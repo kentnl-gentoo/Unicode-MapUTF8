@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.05";
+    $VERSION     = "1.06";
 }
 
 # File level package globals
@@ -70,6 +70,10 @@ By design, it can be easily extended to encompass any new charset encoding
 conversion modules that arrive on the scene.
 
 =head1 CHANGES
+
+1.06 2000.10.30 - Fix to handle change in stringification of overloaded
+                  objects between Perl 5.005 and 5.6.  
+                  Problem noticed by Brian Wisti <wbrian2@uswest.net>.
 
 1.05 2000.10.23 - Error in conversions from UTF8 to multibyte encodings corrected
 
@@ -302,7 +306,7 @@ sub _unicode_map8_from_utf8 {
     }
 
     my $u = Unicode::String::utf8($string);
-    if (! $u) {
+    if (! defined $u) {
         confess( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line " . __LINE__ . ") failed to instantate Unicode::String::utf8 object: $!\n");
     }
     my $ordering = $u->ord;
@@ -586,7 +590,8 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.05 2000.10.23 - Error in conversions from UTF8 to multibyte encodings corrected 
+1.06 2000.10.30 - Fix to handle change in stringification of overloaded
+                  objects for Perl 5.6 
 
 =head1 COPYRIGHT
 

@@ -1,5 +1,11 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.06 2000.10.30 Fix to handle change in stringification of overloaded
+                objects between Perl 5.005 and 5.6.  
+                Problem noticed by Brian Wisti <wbrian2@uswest.net>.
+
+1.05 2000.10.23 Error in conversions from UTF8 to multibyte encodings corrected
+
 1.04 2000.10.23 Additional diagnostic error messages added for
                 internal errors
 
