@@ -1,5 +1,8 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.04 2000.10.23 Additional diagnostic error messages added for
+                internal errors
+
 1.03 2000.10.22 Bug fix for load time Unicode::Map encoding
                 detection
 

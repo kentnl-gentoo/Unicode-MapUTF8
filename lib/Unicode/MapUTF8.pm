@@ -1,7 +1,7 @@
 package Unicode::MapUTF8;
 
 use strict;
-use Carp;
+use Carp qw(confess);
 use Exporter;
 use Unicode::String;
 use Unicode::Map;
@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.03";
+    $VERSION     = "1.05";
 }
 
 # File level package globals
@@ -70,6 +70,10 @@ By design, it can be easily extended to encompass any new charset encoding
 conversion modules that arrive on the scene.
 
 =head1 CHANGES
+
+1.05 2000.10.23 - Error in conversions from UTF8 to multibyte encodings corrected
+
+1.04 2000.10.23 - Additional diagnostic messages added for internal error conditions
 
 1.03 2000.10.22 - Bug fix for load time autodetction of Unicode::Map8 encodings
 
@@ -229,8 +233,8 @@ sub from_utf8 {
     my $converter = $_Supported_Charsets->{$true_charset};
     my $result;
     if    ($converter eq 'map8')        { $result = _unicode_map8_from_utf8   ($string,$true_charset); }
-    elsif ($converter eq 'unicode-map') { $result =  _unicode_map_from_utf8    ($string,$true_charset); }
-    elsif ($converter eq 'string')      { $result =  _unicode_string_from_utf8 ($string,$true_charset); }
+    elsif ($converter eq 'unicode-map') { $result = _unicode_map_from_utf8    ($string,$true_charset); }
+    elsif ($converter eq 'string')      { $result = _unicode_string_from_utf8 ($string,$true_charset); }
     elsif ($converter eq 'jcode')       { $result = _jcode_from_utf8          ($string,$true_charset); }
     else {
         croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - charset '$charset' is not supported\n");
@@ -248,10 +252,14 @@ sub from_utf8 {
 sub _unicode_map_from_utf8 {
     my ($string,$target_charset) = @_;
 
+    if (! defined $target_charset) {
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . '::_unicode_map_from_utf8() - (line ' . __LINE__ . ") No target character set specified\n");
+    }
+
     my $ucs2   = from_utf8 ({ -string => $string, -charset => 'ucs2' });
-    my $target = Unicode::Map8->new($target_charset);
+    my $target = Unicode::Map->new($target_charset);
     if (! defined $target) {
-        die( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line $.) failed to instantate Unicode::Map8 object: $!\n");
+        confess( '[' . localtime(time) . '] ' . __PACKAGE__ . '::_unicode_map_from_utf8() - (line ' . __LINE__ . ") failed to instantate Unicode::Map object for charset '$target_charset': $!\n");
     }
     my $result = $target->from_unicode($ucs2);
     return $result;
@@ -266,9 +274,13 @@ sub _unicode_map_from_utf8 {
 sub _unicode_map_to_utf8 {
     my ($string,$source_charset) = @_;
 
+    if (! defined $source_charset) {
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . '::_unicode_map_to_utf8() - (line ' . __LINE__ . ") No source character set specified\n");
+    }
+
     my $source = Unicode::Map->new($source_charset);
     if (! defined $source) {
-        die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map_to_utf8() - (line $.) failed to instantate a Unicode::Map object: $!\n");
+        confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::Map object: $!\n");
     }
     my $ucs2   = $source->to_unicode($string);
     my $result = to_utf8({ -string => $ucs2, -charset => 'ucs2' });
@@ -285,9 +297,13 @@ sub _unicode_map_to_utf8 {
 sub _unicode_map8_from_utf8 {
     my ($string,$target_charset) = @_;
 
+    if (! defined $target_charset) {
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . '::_unicode_map8_from_utf8() - (line ' . __LINE__ . ") No target character set specified\n");
+    }
+
     my $u = Unicode::String::utf8($string);
     if (! $u) {
-        die( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line $.) failed to instantate Unicode::String::utf8 object: $!\n");
+        confess( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line " . __LINE__ . ") failed to instantate Unicode::String::utf8 object: $!\n");
     }
     my $ordering = $u->ord;
     $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
@@ -295,7 +311,7 @@ sub _unicode_map8_from_utf8 {
 
     my $target = Unicode::Map8->new($target_charset);
     if (! defined $target) {
-        die( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line $.) ailed to instantate Unicode::Map8 object: $!\n");
+        confess( '[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_from_utf8() - (line " . __LINE__ . ") ailed to instantate Unicode::Map8 object for character set '$target_charset':  $!\n");
     }
     my $result = $target->to8($ucs2_string);
 
@@ -315,12 +331,12 @@ sub _unicode_map8_to_utf8 {
 
     my $source = Unicode::Map8->new($source_charset);
     if (! defined $source) {
-        die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line $.) failed to instantate a Unicode::Map8 object for character set '$source_charset': $!\n");
+        confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::Map8 object for character set '$source_charset': $!\n");
     }
 
     my $ucs2_string = $source->tou($string);
     if (! defined $ucs2_string) {
-            die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line $.) failed to instantate a Unicode::String::utf16 object: $!\n");
+            confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf16 object: $!\n");
     }
     my $utf8_string = $ucs2_string->utf8;
 
@@ -384,7 +400,7 @@ sub _unicode_string_to_utf8 {
     } elsif ($source_charset eq 'ucs2') {
         my $u = Unicode::String::utf16($string);
         if (! defined $u) {
-            die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line $.) failed to instantate a Unicode::String::utf16 object: $!\n");
+            confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf16 object: $!\n");
         }
         my $ordering = $u->ord;
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
@@ -392,7 +408,7 @@ sub _unicode_string_to_utf8 {
     } elsif ($source_charset eq 'ucs4') {
         my $u = Unicode::String::ucs4($string);
         if (! defined $u) {
-            die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line $.) failed to instantate a Unicode::String::ucs4 object: $!\n");
+            confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::ucs4 object: $!\n");
         }
         my $ordering = $u->ord;
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
@@ -400,7 +416,7 @@ sub _unicode_string_to_utf8 {
     } elsif ($source_charset eq 'utf16') {
         my $u = Unicode::String::uft16($string);
         if (! defined $u) {
-            die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line $.) failed to instantate a Unicode::String::utf16 object: $!\n");
+            confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf16 object: $!\n");
         }
         my $ordering = $u->ord;
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
@@ -408,7 +424,7 @@ sub _unicode_string_to_utf8 {
     } elsif ($source_charset eq 'utf7') {
         my $u = Unicode::String::uft7($string);
         if (! defined $u) {
-            die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line $.) failed to instantate a Unicode::String::utf7 object: $!\n");
+            confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf7 object: $!\n");
         }
         my $ordering = $u->ord;
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
@@ -532,26 +548,26 @@ $_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
 
 sub _list_unicode_map8_charsets {
     my %set = (
-	       ucs4 => {},
-	       ucs2 => {utf16 => 1},
-	       utf7 => {},
-	       utf8 => {},
-	      );
+           ucs4 => {},
+           ucs2 => {utf16 => 1},
+           utf7 => {},
+           utf8 => {},
+          );
     if (opendir(DIR, $Unicode::Map8::MAPS_DIR)) {
         my @files = grep(!/^\.\.?$/,readdir(DIR));
         foreach my $f (@files) {
-	        next unless -f "$Unicode::Map8::MAPS_DIR/$f";
-	        $f =~ s/\.(?:bin|txt)$//;
-            my $supported = 
-	        $set{$f} = {} if Unicode::Map8->new($f);
-	    }
+            next unless -f "$Unicode::Map8::MAPS_DIR/$f";
+            $f =~ s/\.(?:bin|txt)$//;
+            my $supported =
+            $set{$f} = {} if Unicode::Map8->new($f);
+        }
     }
 
     my $avoid_warning = keys %Unicode::Map8::ALIASES;
     while ( my($alias, $charset) = each %Unicode::Map8::ALIASES) {
-	    if (exists $set{$charset}) {
-	        $set{$charset}{$alias} = 1;
-	    }
+        if (exists $set{$charset}) {
+            $set{$charset}{$alias} = 1;
+        }
     }
 
     my %merged_set = ();
@@ -560,9 +576,9 @@ sub _list_unicode_map8_charsets {
         my $set_item = $set{$encoding};
         while (my ($key,$value) = each (%$set_item)) {
                 $merged_set{$key} = $value;
-	    }
+        }
     }
-    my @final_charsets = sort keys %merged_set; 
+    my @final_charsets = sort keys %merged_set;
     return @final_charsets;
 }
 
@@ -570,7 +586,7 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.03 2000.10.22 - Bug fix for autodetected Unicode::Map8 encodings 
+1.05 2000.10.23 - Error in conversions from UTF8 to multibyte encodings corrected 
 
 =head1 COPYRIGHT
 
