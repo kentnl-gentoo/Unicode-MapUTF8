@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.08";
+    $VERSION     = "1.09";
 }
 
 ############################
@@ -77,53 +77,58 @@ conversion modules that arrive on the scene.
 
 =head1 CHANGES
 
-1.08 2000.11.06 - Added 'utf8_charset_alias' function to 
-                  allow for runtime setting of character 
+1.09 2001.08.22 - Fixed multiple typo occurances of 'uft'
+                  where 'utf' was meant in code. Problem affected
+                  utf16 and utf7 encodings. Problem found
+                  by devon smith <devon@taller.PSCL.cwru.edu>
+
+1.08 2000.11.06 - Added 'utf8_charset_alias' function to
+                  allow for runtime setting of character
                   set aliases. Added several alternate
-                  names for 'sjis' (shiftjis, shift-jis, 
+                  names for 'sjis' (shiftjis, shift-jis,
                   shift_jis, s-jis, and s_jis).
 
-                  Corrected 'croak' messages for 
-                  'from_utf8' functions to appropriate 
+                  Corrected 'croak' messages for
+                  'from_utf8' functions to appropriate
                   function name.
 
                   Tightened up initialization encapsulation
 
-                  Corrected fatal problem in jcode from 
-                  unicode internals. Problem and fix 
+                  Corrected fatal problem in jcode from
+                  unicode internals. Problem and fix
                   found by Brian Wisti <wbrian2@uswest.net>.
 
-1.07 2000.11.01 - Added 'croak' to use Carp declaration to 
-                  fix error messages.  Problem and fix 
-                  found by Brian Wisti 
+1.07 2000.11.01 - Added 'croak' to use Carp declaration to
+                  fix error messages.  Problem and fix
+                  found by Brian Wisti
                   <wbrian2@uswest.net>.
 
-1.06 2000.10.30 - Fix to handle change in stringification 
-                  of overloaded objects between Perl 5.005 
-                  and 5.6. Problem noticed by Brian Wisti 
+1.06 2000.10.30 - Fix to handle change in stringification
+                  of overloaded objects between Perl 5.005
+                  and 5.6. Problem noticed by Brian Wisti
                   <wbrian2@uswest.net>.
 
-1.05 2000.10.23 - Error in conversions from UTF8 to 
+1.05 2000.10.23 - Error in conversions from UTF8 to
                   multibyte encodings corrected
 
-1.04 2000.10.23 - Additional diagnostic messages added 
+1.04 2000.10.23 - Additional diagnostic messages added
                   for internal error conditions
 
-1.03 2000.10.22 - Bug fix for load time autodetction of 
+1.03 2000.10.22 - Bug fix for load time autodetction of
                   Unicode::Map8 encodings
 
-1.02 2000.10.22 - Added load time autodetection of 
-                  Unicode::Map8 supported character set 
+1.02 2000.10.22 - Added load time autodetection of
+                  Unicode::Map8 supported character set
                   encodings.
 
-                  Fixed internal calling error for some 
-                  character sets with 'from_utf8'. Thanks 
-                  goes to Ilia Lobsanov 
+                  Fixed internal calling error for some
+                  character sets with 'from_utf8'. Thanks
+                  goes to Ilia Lobsanov
                   <ilia@lobsanov.com> for reporting this
                   problem.
 
-1.01 2000.10.02 - Fixed handling of empty strings and 
-                  added more identification for error 
+1.01 2000.10.02 - Fixed handling of empty strings and
+                  added more identification for error
                   messages.
 
 1.00 2000.09.29 - Pre-release version
@@ -522,7 +527,7 @@ sub _unicode_string_from_utf8 {
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
         $final = $u->utf16;
     } elsif ($target_charset eq 'utf7') {
-        my $u = Unicode::String::uft8($string);
+        my $u = Unicode::String::utf8($string);
         my $ordering = $u->ord;
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
         $final = $u->utf7;
@@ -563,7 +568,7 @@ sub _unicode_string_to_utf8 {
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
         $final = $u->utf8;
     } elsif ($source_charset eq 'utf16') {
-        my $u = Unicode::String::uft16($string);
+        my $u = Unicode::String::utf16($string);
         if (! defined $u) {
             confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf16 object: $!\n");
         }
@@ -571,7 +576,7 @@ sub _unicode_string_to_utf8 {
         $u->byteswap if (defined($ordering) && ($ordering == 0xFFFE));
         $final = $u->utf8;
     } elsif ($source_charset eq 'utf7') {
-        my $u = Unicode::String::uft7($string);
+        my $u = Unicode::String::utf7($string);
         if (! defined $u) {
             confess('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_string_to_utf8() - (line " . __LINE__ . ") failed to instantate a Unicode::String::utf7 object: $!\n");
         }
@@ -744,7 +749,7 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.08 2000.11.06
+1.09 2001.08.22
 
 =head1 COPYRIGHT
 
