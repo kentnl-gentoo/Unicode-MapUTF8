@@ -1,5 +1,8 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.07 2000.11.01 Added 'croak' to use Carp declaration to fix error
+                messages. Problem and fix found by <wbrian2@uswest.net>.
+
 1.06 2000.10.30 Fix to handle change in stringification of overloaded
                 objects between Perl 5.005 and 5.6.  
                 Problem noticed by Brian Wisti <wbrian2@uswest.net>.

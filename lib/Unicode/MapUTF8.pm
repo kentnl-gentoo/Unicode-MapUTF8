@@ -1,7 +1,7 @@
 package Unicode::MapUTF8;
 
 use strict;
-use Carp qw(confess);
+use Carp qw(confess croak);
 use Exporter;
 use Unicode::String;
 use Unicode::Map;
@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.06";
+    $VERSION     = "1.07";
 }
 
 # File level package globals
@@ -70,6 +70,9 @@ By design, it can be easily extended to encompass any new charset encoding
 conversion modules that arrive on the scene.
 
 =head1 CHANGES
+
+1.07 2000.11.01 - Added 'croak' to use Carp declaration to fix error messages.
+                  Problem and fix found by Brian Wisti <wbrian2@uswest.net>.
 
 1.06 2000.10.30 - Fix to handle change in stringification of overloaded
                   objects between Perl 5.005 and 5.6.  
@@ -590,8 +593,7 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.06 2000.10.30 - Fix to handle change in stringification of overloaded
-                  objects for Perl 5.6 
+1.07 2000.11.01
 
 =head1 COPYRIGHT
 
