@@ -1,0 +1,5 @@
+MANIFEST
+Makefile.PL
+README
+lib/Unicode/MapUTF8.pm
+t/01_unicode_maputf8.t
