@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.02";
+    $VERSION     = "1.03";
 }
 
 # File level package globals
@@ -70,6 +70,8 @@ By design, it can be easily extended to encompass any new charset encoding
 conversion modules that arrive on the scene.
 
 =head1 CHANGES
+
+1.03 2000.10.22 - Bug fix for load time autodetction of Unicode::Map8 encodings
 
 1.02 2000.10.22 - Added load time autodetection of Unicode::Map8 supported
                   character set encodings.
@@ -313,7 +315,7 @@ sub _unicode_map8_to_utf8 {
 
     my $source = Unicode::Map8->new($source_charset);
     if (! defined $source) {
-        die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line $.) failed to instantate a Unicode::Map8 object: $!\n");
+        die('[' . localtime(time) . '] ' . __PACKAGE__ . "::_unicode_map8_to_utf8() - (line $.) failed to instantate a Unicode::Map8 object for character set '$source_charset': $!\n");
     }
 
     my $ucs2_string = $source->tou($string);
@@ -480,9 +482,10 @@ sub _utf8_from_jcode {
 
 #######################################################################
 #
-# Character set handlers map
+# Character set handlers maps
 #
 
+# Various hard wird things
 $_Supported_Charsets = {
     'utf8'                    => 'string',
     'ucs2'                    => 'string',
@@ -494,7 +497,7 @@ $_Supported_Charsets = {
     'jis'                     => 'jcode',
     'euc-jp'                  => 'jcode',
 };
-
+$_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
 
 # All the Unicode::Map8 charsets
 {
@@ -502,11 +505,10 @@ $_Supported_Charsets = {
     foreach my $id (@map_ids) {
         my $lc_id = lc ($id);
         next if (exists ($_Charset_Names->{$lc_id}));
-        $_Supported_Charsets->{$id} = 'unicode-map';
+        $_Supported_Charsets->{$id} = 'map8';
         $_Charset_Names->{$lc_id}    = $id;
     }
 }
-
 $_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
 
 # Add any charsets not already listed from Unicode::Map
@@ -529,7 +531,6 @@ $_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
 #
 
 sub _list_unicode_map8_charsets {
-    require Unicode::Map8;
     my %set = (
 	       ucs4 => {},
 	       ucs2 => {utf16 => 1},
@@ -537,10 +538,11 @@ sub _list_unicode_map8_charsets {
 	       utf8 => {},
 	      );
     if (opendir(DIR, $Unicode::Map8::MAPS_DIR)) {
-	    my $f;
-	    while (defined($f = readdir(DIR))) {
+        my @files = grep(!/^\.\.?$/,readdir(DIR));
+        foreach my $f (@files) {
 	        next unless -f "$Unicode::Map8::MAPS_DIR/$f";
 	        $f =~ s/\.(?:bin|txt)$//;
+            my $supported = 
 	        $set{$f} = {} if Unicode::Map8->new($f);
 	    }
     }
@@ -552,20 +554,23 @@ sub _list_unicode_map8_charsets {
 	    }
     }
 
-    my @charsets = ();
-    for (sort keys %set) {
-	    if (%{$set{$_}}) {
-	        push(@charsets, sort keys %{$set{$_}});
+    my %merged_set = ();
+    foreach my $encoding (keys %set) {
+        $merged_set{$encoding} = 1;
+        my $set_item = $set{$encoding};
+        while (my ($key,$value) = each (%$set_item)) {
+                $merged_set{$key} = $value;
 	    }
     }
-    return @charsets;
+    my @final_charsets = sort keys %merged_set; 
+    return @final_charsets;
 }
 
 ######################################################################
 
 =head1 VERSION
 
-1.02 2000.10.22 - Added load time autodetection of Unicode::Map8 character sets
+1.03 2000.10.22 - Bug fix for autodetected Unicode::Map8 encodings 
 
 =head1 COPYRIGHT
 

@@ -18,6 +18,9 @@ my $test_subs = {
        3 => { -code => \&test3, -desc => ' multi-byte                ' },
        4 => { -code => \&test4, -desc => ' jcode                     ' },
 };
+
+my @charsets = utf8_supported_charset;
+
 print $do_tests[0],'..',$do_tests[$#do_tests],"\n";
 print STDERR "\n";
 my $n_failures = 0;
