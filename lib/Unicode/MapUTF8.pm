@@ -1,7 +1,7 @@
 package Unicode::MapUTF8;
 
 use strict;
-use Carp qw(confess croak);
+use Carp qw(confess croak carp);
 use Exporter;
 use Unicode::String;
 use Unicode::Map;
@@ -9,19 +9,22 @@ use Unicode::Map8;
 use Jcode;
 
 use vars qw ($VERSION @EXPORT @EXPORT_OK @EXPORT_TAGS @ISA);
-use subs qw (utf8_supported_charset to_utf8 from_utf8);
+use subs qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias _init_charsets);
 
 BEGIN {
     @ISA         = qw(Exporter);
     @EXPORT      = qw ();
-    @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8);
+    @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.07";
+    $VERSION     = "1.08";
 }
 
-# File level package globals
+############################
+# File level package globals (class variables)
 my $_Supported_Charsets;
 my $_Charset_Names;
+my $_Charset_Aliases;
+_init_charsets;
 
 =head1 NAME
 
@@ -39,6 +42,9 @@ Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
  # List available character set encodings
  my @character_sets = utf8_supported_charset;
+
+ # Add a character set alias
+ utf8_charset_alias({ 'ms-japanese' => 'sjis' });
 
  # Convert between two arbitrary (but largely compatible) charset encodings
  # (SJIS to EUC-JP)
@@ -71,27 +77,53 @@ conversion modules that arrive on the scene.
 
 =head1 CHANGES
 
-1.07 2000.11.01 - Added 'croak' to use Carp declaration to fix error messages.
-                  Problem and fix found by Brian Wisti <wbrian2@uswest.net>.
+1.08 2000.11.06 - Added 'utf8_charset_alias' function to 
+                  allow for runtime setting of character 
+                  set aliases. Added several alternate
+                  names for 'sjis' (shiftjis, shift-jis, 
+                  shift_jis, s-jis, and s_jis).
 
-1.06 2000.10.30 - Fix to handle change in stringification of overloaded
-                  objects between Perl 5.005 and 5.6.  
-                  Problem noticed by Brian Wisti <wbrian2@uswest.net>.
+                  Corrected 'croak' messages for 
+                  'from_utf8' functions to appropriate 
+                  function name.
 
-1.05 2000.10.23 - Error in conversions from UTF8 to multibyte encodings corrected
+                  Tightened up initialization encapsulation
 
-1.04 2000.10.23 - Additional diagnostic messages added for internal error conditions
+                  Corrected fatal problem in jcode from 
+                  unicode internals. Problem and fix 
+                  found by Brian Wisti <wbrian2@uswest.net>.
 
-1.03 2000.10.22 - Bug fix for load time autodetction of Unicode::Map8 encodings
+1.07 2000.11.01 - Added 'croak' to use Carp declaration to 
+                  fix error messages.  Problem and fix 
+                  found by Brian Wisti 
+                  <wbrian2@uswest.net>.
 
-1.02 2000.10.22 - Added load time autodetection of Unicode::Map8 supported
-                  character set encodings.
+1.06 2000.10.30 - Fix to handle change in stringification 
+                  of overloaded objects between Perl 5.005 
+                  and 5.6. Problem noticed by Brian Wisti 
+                  <wbrian2@uswest.net>.
 
-                  Fixed internal calling error for some character sets with 'from_utf8'.
-                  Thanks goes to Ilia Lobsanov <ilia@lobsanov.com> for reporting the
+1.05 2000.10.23 - Error in conversions from UTF8 to 
+                  multibyte encodings corrected
+
+1.04 2000.10.23 - Additional diagnostic messages added 
+                  for internal error conditions
+
+1.03 2000.10.22 - Bug fix for load time autodetction of 
+                  Unicode::Map8 encodings
+
+1.02 2000.10.22 - Added load time autodetection of 
+                  Unicode::Map8 supported character set 
+                  encodings.
+
+                  Fixed internal calling error for some 
+                  character sets with 'from_utf8'. Thanks 
+                  goes to Ilia Lobsanov 
+                  <ilia@lobsanov.com> for reporting this
                   problem.
 
-1.01 2000.10.02 - Fixed handling of empty strings and added more identification for error
+1.01 2000.10.02 - Fixed handling of empty strings and 
+                  added more identification for error 
                   messages.
 
 1.00 2000.09.29 - Pre-release version
@@ -104,10 +136,114 @@ conversion modules that arrive on the scene.
 
 =over 4
 
-=item C<utf8_supported_charset($charset_name);>
+=item utf8_charset_alias({ $alias => $charset });
+
+Used for runtime assignment of character set aliases.
+
+Called with no parameters, returns a hash of defined aliases and the character sets
+they map to.
+
+Example:
+
+  my $aliases     = utf8_charset_alias;
+  my @alias_names = keys %$aliases;
+
+If called with ONE parameter, returns the name of the 'real' charset
+if the alias is defined. Returns undef if it is not found in the aliases.
+
+Example:
+
+    if (! utf8_charset_alias('VISCII')) {
+        # No alias for this
+    }
+
+If called with a list of 'alias' => 'charset' pairs, defines those aliases for use.
+
+Example:
+
+    utf8_charset_alias({ 'japanese' => 'sjis', 'japan' => 'sjis' });
+
+Note: It will croak if a passed pair does not map to a character set
+defined in the predefined set of character encoding. It is NOT
+allowed to alias something to another alias.
+
+Multiple character set aliases can be set with a single call.
+
+To clear an alias, pass a character set mapping of undef.
+
+Example:
+
+    utf8_charset_alias({ 'japanese' => undef });
+
+While an alias is set, the 'utf8_supported_charset' function
+will return the alias as if it were a predefined charset.
+
+Overriding a base defined character encoding with an alias
+will generate a warning message to STDERR.
+
+=back
+
+=cut
+
+sub utf8_charset_alias {
+    if ($#_ == -1) {
+        my $aliases = {};
+        %$aliases   =  %$_Charset_Aliases;
+        return $aliases;
+    }
+    my $parms;
+    my @parms_list = @_;
+    if (($#parms_list == 0) && (ref ($parms_list[0]) eq 'HASH')) {
+        _set_utf8_charset_alias($parms_list[0]);
+        return;
+    } elsif (($#parms_list > 0) && (($#parms_list % 2) == 1)) {
+        _set_utf8_charset_alias({ @parms_list });
+        return;
+    } elsif ($#parms_list == 0) {
+        my $lc_charset = lc($parms_list[0]);
+        my $result     = $_Charset_Aliases->{$lc_charset};
+        return $result;
+    }
+    croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::utf8_charset_alias() - invalid parameters passed\n");
+}
+
+######################################################################
+# Sets (or clears ;-) ) a runtime character set alias.
+
+sub _set_utf8_charset_alias {
+    my ($parms) = @_;
+    my @alias_names = keys %$parms;
+    foreach my $alias (@alias_names) {
+        my $lc_alias = lc ($alias);
+        my $charset  = $parms->{$alias};
+        if (! defined $charset) {
+            if (exists ($_Charset_Aliases->{$lc_alias})) {
+                delete $_Charset_Aliases->{$lc_alias};
+            }
+            next;
+        }
+        my $lc_charset = lc ($charset);
+        if (! exists ($_Charset_Names->{$lc_charset})) {
+            croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::utf8_charset_alias() - attempted to set alias '$alias' to point to unknown charset encoding of '$charset'\n");
+        }
+        if (exists ($_Charset_Names->{$lc_alias})) {
+            carp('[' . localtime(time) . '] [warning] ' . __PACKAGE__ . "::utf8_charset_alias() - Aliased base defined charset name '$alias' to '$charset'.");
+        }
+        $_Charset_Aliases->{$lc_alias} = $lc_charset;
+    }
+}
+
+######################################################################
+
+=over 4
+
+=item utf8_supported_charset($charset_name);
 
 
-Returns true if the named charset is supported. false if it is not.
+Returns true if the named charset is supported (including
+user defiend aliases).
+
+Returns false if it is not.
 
 Example:
 
@@ -116,7 +252,8 @@ Example:
     }
 
 If called in a list context with no parameters, it will return
-a list of all supported character set names.
+a list of all supported character set names (including user
+defined aliases).
 
 Example:
 
@@ -128,23 +265,25 @@ Example:
 
 sub utf8_supported_charset {
     if ($#_ == -1 && wantarray) {
-        my @charsets = sort keys %$_Supported_Charsets;
+        my %all_charsets = (%$_Supported_Charsets, %$_Charset_Aliases);
+        my @charsets     = sort keys %all_charsets;
         return @charsets;
     }
     my $charset = shift;
     if (not defined $charset) {
         croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::utf8_supported_charset() - no character set specified\n");
     }
-
-    my $results = exists ($_Charset_Names->{lc($charset)});
-    return $results;
+    my $lc_charset = lc($charset);
+    return 1 if (exists ($_Charset_Names->{$lc_charset}));
+    return 1 if (exists ($_Charset_Aliases->{$lc_charset}));
+    return 0;
 }
 
 ######################################################################
 
 =over 4
 
-=item C<to_utf8({ -string => $string, -charset => $source_charset });>
+=item to_utf8({ -string => $string, -charset => $source_charset });
 
 
 Returns the string converted to UTF8 from the specified source charset.
@@ -176,7 +315,9 @@ sub to_utf8 {
     if (! defined ($charset)) {
         croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - missing '-charset' parameter value\n");
     }
-    my $true_charset = $_Charset_Names->{lc($charset)};
+    my $lc_charset    = lc ($charset);
+    my $alias_charset = $_Charset_Aliases->{$lc_charset};
+    my $true_charset  = defined($alias_charset) ? $_Charset_Names->{$alias_charset} : $_Charset_Names->{$lc_charset};
     if (! defined $true_charset) {
         croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - character set '$charset' is not supported\n");
     }
@@ -197,8 +338,7 @@ sub to_utf8 {
 
 =over 4
 
-=item C<from_utf8({ -string => $string, -charset => $target_charset});>
-
+=item from_utf8({ -string => $string, -charset => $target_charset});
 
 Returns the string converted from UTF8 to the specified target charset.
 
@@ -214,25 +354,27 @@ sub from_utf8 {
     } elsif ($#parm_list == 0) {
         $parms = $parm_list[0];
         if (! ref($parms)) {
-            croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - invalid parameters passed\n");
+            croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - invalid parameters passed\n");
         }
     } else {
-        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - bad parameters passed\n");
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - bad parameters passed\n");
     }
 
     if (! (exists $parms->{-string})) {
-    ; croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - missing '-string' parameter\n");
+    ; croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - missing '-string' parameter\n");
     }
 
     my $string  = $parms->{-string};
     my $charset = $parms->{-charset};
 
     if (! defined ($charset)) {
-        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - missing '-charset' parameter value\n");
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - missing '-charset' parameter value\n");
     }
-    my $true_charset = $_Charset_Names->{lc($charset)};
+    my $lc_charset    = lc ($charset);
+    my $alias_charset = $_Charset_Aliases->{$lc_charset};
+    my $true_charset  = defined($alias_charset) ? $_Charset_Names->{$alias_charset} : $_Charset_Names->{$lc_charset};
     if (! defined $true_charset) {
-        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - character set '$charset' is not supported\n");
+        croak( '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - character set '$charset' is not supported\n");
     }
 
     $string = '' if (! defined ($string));
@@ -244,7 +386,7 @@ sub from_utf8 {
     elsif ($converter eq 'string')      { $result = _unicode_string_from_utf8 ($string,$true_charset); }
     elsif ($converter eq 'jcode')       { $result = _jcode_from_utf8          ($string,$true_charset); }
     else {
-        croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::to_utf8() - charset '$charset' is not supported\n");
+        croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::from_utf8() - charset '$charset' is not supported\n");
     }
     return $result;
 }
@@ -473,12 +615,12 @@ sub _jcode_from_utf8 {
 
 ######################################################################
 #
-# _utf8_from_jcode($string,$source_charset);
+# _jcode_to_utf8($string,$source_charset);
 #
 # Returns the string converted from the specified Jcode encoding to UTF8.
 #
 
-sub _utf8_from_jcode {
+sub _jcode_to_utf8 {
     my ($string,$source_charset) = @_;
 
     $source_charset = lc ($source_charset);
@@ -487,7 +629,7 @@ sub _utf8_from_jcode {
     if    ($source_charset eq 'iso-2022-jp') {
         my $j  = Jcode->new($string,$source_charset);
         $final = $j->utf8;
-    } elsif ($source_charset eq 'sjis') {
+    } elsif ($source_charset =~m/^(s[-_]?jis|shift[-_]?jis)$/) {
         my $j  = Jcode->new($string,$source_charset);
         $final = $j->utf8;
     } elsif ($source_charset eq 'euc-jp') {
@@ -497,7 +639,7 @@ sub _utf8_from_jcode {
         my $j  = Jcode->new($string,$source_charset);
         $final = $j->utf8;
     } else {
-        croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::_utf8_from_jcode() - charset '$source_charset' is not supported\n");
+        croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::_jcode_to_utf8() - charset '$source_charset' is not supported\n");
     }
 
     return $final;
@@ -508,41 +650,50 @@ sub _utf8_from_jcode {
 # Character set handlers maps
 #
 
-# Various hard wird things
-$_Supported_Charsets = {
-    'utf8'                    => 'string',
-    'ucs2'                    => 'string',
-    'ucs4'                    => 'string',
-    'utf7'                    => 'string',
-    'utf16'                   => 'string',
-    'sjis'                    => 'jcode',
-    'iso-2022-jp'             => 'jcode',
-    'jis'                     => 'jcode',
-    'euc-jp'                  => 'jcode',
-};
-$_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
+sub _init_charsets {
 
-# All the Unicode::Map8 charsets
-{
-    my @map_ids = &_list_unicode_map8_charsets;
-    foreach my $id (@map_ids) {
-        my $lc_id = lc ($id);
-        next if (exists ($_Charset_Names->{$lc_id}));
-        $_Supported_Charsets->{$id} = 'map8';
-        $_Charset_Names->{$lc_id}    = $id;
+    $_Charset_Aliases    = {};
+
+    $_Supported_Charsets = {
+        'utf8'                    => 'string',
+        'ucs2'                    => 'string',
+        'ucs4'                    => 'string',
+        'utf7'                    => 'string',
+        'utf16'                   => 'string',
+        'sjis'                    => 'jcode',
+        's-jis'                   => 'jcode',
+        's_jis'                   => 'jcode',
+        'shiftjis'                => 'jcode',
+        'shift-jis'               => 'jcode',
+        'shift_jis'               => 'jcode',
+        'iso-2022-jp'             => 'jcode',
+        'jis'                     => 'jcode',
+        'euc-jp'                  => 'jcode',
+    };
+    $_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
+
+    # All the Unicode::Map8 charsets
+    {
+        my @map_ids = &_list_unicode_map8_charsets;
+        foreach my $id (@map_ids) {
+            my $lc_id = lc ($id);
+            next if (exists ($_Charset_Names->{$lc_id}));
+            $_Supported_Charsets->{$id} = 'map8';
+            $_Charset_Names->{$lc_id}    = $id;
+        }
     }
-}
-$_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
+    $_Charset_Names = { map { lc ($_) => $_ } keys %$_Supported_Charsets };
 
-# Add any charsets not already listed from Unicode::Map
-{
-    my $unicode_map = Unicode::Map->new;
-    my @map_ids     = $unicode_map->ids;
-    foreach my $id (@map_ids) {
-        my $lc_id = lc ($id);
-        next if (exists ($_Charset_Names->{$lc_id}));
-        $_Supported_Charsets->{$id} = 'unicode-map';
-        $_Charset_Names->{$lc_id}    = $id;
+    # Add any charsets not already listed from Unicode::Map
+    {
+        my $unicode_map = Unicode::Map->new;
+        my @map_ids     = $unicode_map->ids;
+        foreach my $id (@map_ids) {
+            my $lc_id = lc ($id);
+            next if (exists ($_Charset_Names->{$lc_id}));
+            $_Supported_Charsets->{$id} = 'unicode-map';
+            $_Charset_Names->{$lc_id}    = $id;
+        }
     }
 }
 
@@ -593,7 +744,7 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.07 2000.11.01
+1.08 2000.11.06
 
 =head1 COPYRIGHT
 
@@ -608,7 +759,7 @@ Benjamin Franz <snowhare@nihongo.org>
 
 =head1 TODO
 
-Regression tests for Jcode and 2-byte encodings
+Regression tests for Jcode, 2-byte encodings and encoding aliases
 
 =head1 SEE ALSO
 

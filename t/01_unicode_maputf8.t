@@ -2,7 +2,7 @@
 
 use strict;
 use lib ('./blib','../blib','../lib','./lib');
-use Unicode::MapUTF8 qw(utf8_supported_charset to_utf8 from_utf8);
+use Unicode::MapUTF8 qw(utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias);
 
 # General info for writing test modules: 
 #
@@ -10,13 +10,14 @@ use Unicode::MapUTF8 qw(utf8_supported_charset to_utf8 from_utf8);
 # working directory is the one _above_ the 
 # 't/' directory. 
 
-my @do_tests=(1..4);
+my @do_tests=(1..5);
 
 my $test_subs = { 
        1 => { -code => \&test1, -desc => ' eight-bit                 ' },
        2 => { -code => \&test2, -desc => ' unicode                   ' },
        3 => { -code => \&test3, -desc => ' multi-byte                ' },
        4 => { -code => \&test4, -desc => ' jcode                     ' },
+       5 => { -code => \&test5, -desc => ' charset aliases           ' },
 };
 
 my @charsets = utf8_supported_charset;
@@ -66,6 +67,8 @@ sub test1 {
                                 -utf8 => $utf8_string,
                              });
     return $result if ($result ne '');
+
+    return '';
 }
 
 ########################################
@@ -89,6 +92,8 @@ sub test2 {
                                 -utf8 => $utf8_string,
             });
     return $result if ($result ne '');
+
+    return '';
 }
 
 ########################################
@@ -102,6 +107,77 @@ sub test3 {
 # Japanese (Jcode) conversions         #
 ########################################
 sub test4 {
+    my $charset       = 'euc-jp';
+    my $source_string = "Hello World";
+    my $utf8_string   = 'Hello World';
+    my $result = test_general({ -charset => $charset,
+                                 -source => $source_string,
+                                   -utf8 => $utf8_string,
+                             });
+    return $result if ($result ne '');
+
+    $source_string = '';
+    $utf8_string   = '';
+    $result = test_general({ -charset => $charset,
+                              -source => $source_string,
+                                -utf8 => $utf8_string,
+            });
+    return $result if ($result ne '');
+    
+    return '';
+}
+
+########################################
+# Charset aliases                      #
+########################################
+sub test5 {
+    my $charset='ISO-8859-1';
+    my $alias  ='latin-1_sort_of';
+    eval {
+        utf8_charset_alias({ $alias => $charset });
+    };
+	if ($@) { return "$@" }
+    eval {
+        my $aliased = utf8_charset_alias($alias);
+        if ((! defined $aliased) || (lc($charset) ne lc($aliased))) {
+            die("Alias crosscheck for '$alias' -> '$charset' returned a *different* charset of '$aliased'");
+        }
+    };
+	if ($@) { return "Failed to alias character set '$charset' to '$alias': $@" }
+
+    $charset       = $alias;
+    my $source_string = 'Hello World';
+    my $utf8_string   = 'Hello World';
+    my $result = test_general({ -charset => $charset,
+                                 -source => $source_string,
+                                   -utf8 => $utf8_string,
+                             });
+    return $result if ($result ne '');
+
+    $source_string = '';
+    $utf8_string    = '';
+    $result = test_general({ -charset => $charset,
+                              -source => $source_string,
+                                -utf8 => $utf8_string,
+                             });
+    return $result if ($result ne '');
+
+    eval {
+        utf8_charset_alias({ $alias => undef });
+    };
+	if ($@) { return "$@" }
+
+    $source_string = 'Hello World';
+    $utf8_string   = 'Hello World';
+    eval { my $result = test_general({ -charset => $charset,
+                                 -source => $source_string,
+                                   -utf8 => $utf8_string,
+                             });
+    };
+    if (! defined $@) {
+        return "Failed to catch use of non-aliased charset";
+    }
+
     return '';
 }
 

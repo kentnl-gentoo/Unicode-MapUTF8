@@ -1,5 +1,16 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.08 2000.11.06 Added 'utf8_charset_alias' function to allow for runtime
+                setting of character set aliases. Added several alternate
+                names for 'sjis' (shiftjis, shift-jis, shift_jis, s-jis,
+                and s_jis). 
+
+                Corrected 'croak' messages for 'from_utf8' functions to
+                appropriate function name.
+
+                Corrected fatal problem in jcode-unicode internals. Problem 
+                and fix found by Brian Wisti <wbrian2@uswest.net>.
+
 1.07 2000.11.01 Added 'croak' to use Carp declaration to fix error
                 messages. Problem and fix found by <wbrian2@uswest.net>.
 
