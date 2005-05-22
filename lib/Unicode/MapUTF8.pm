@@ -16,7 +16,7 @@ BEGIN {
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.09";
+    $VERSION     = "1.10";
 }
 
 ############################
@@ -77,6 +77,13 @@ conversion modules that arrive on the scene.
 
 =head1 CHANGES
 
+1.10 2005.05.22 - Fixed bug in conversion of ISO-2022-JP to UTF-8.
+                  Problem and fix found by Masahiro HONMA
+                  <masahiro.honma@tsutaya.co.jp>.
+
+                  Similar bugs in conversions of shift_jis and euc-jp
+                  to UTF-8 fixed as well.
+                  
 1.09 2001.08.22 - Fixed multiple typo occurances of 'uft'
                   where 'utf' was meant in code. Problem affected
                   utf16 and utf7 encodings. Problem found
@@ -604,7 +611,7 @@ sub _jcode_from_utf8 {
 
     $target_charset = lc ($target_charset);
     my $final;
-    if    ($target_charset eq 'iso-2022-jp') {
+    if    ($target_charset =~ m/^iso[-_]2022[-_]jp$/) {
         $final = $j->iso_2022_jp;
     } elsif ($target_charset eq 'sjis') {
         $final = $j->sjis;
@@ -631,17 +638,17 @@ sub _jcode_to_utf8 {
     $source_charset = lc ($source_charset);
 
     my $final;
-    if    ($source_charset eq 'iso-2022-jp') {
-        my $j  = Jcode->new($string,$source_charset);
+    if    ($source_charset =~ m/^iso[-_]2022[-_]jp$/) {
+        my $j  = Jcode->new($string,'jis')->h2z;
         $final = $j->utf8;
     } elsif ($source_charset =~m/^(s[-_]?jis|shift[-_]?jis)$/) {
-        my $j  = Jcode->new($string,$source_charset);
+        my $j  = Jcode->new($string,'sjis');
         $final = $j->utf8;
     } elsif ($source_charset eq 'euc-jp') {
-        my $j  = Jcode->new($string,$source_charset);
+        my $j  = Jcode->new($string,'euc');
         $final = $j->utf8;
     } elsif ($source_charset eq 'jis') {
-        my $j  = Jcode->new($string,$source_charset);
+        my $j  = Jcode->new($string,'jis');
         $final = $j->utf8;
     } else {
         croak(  '[' . localtime(time) . '] ' . __PACKAGE__ . "::_jcode_to_utf8() - charset '$source_charset' is not supported\n");
@@ -672,6 +679,7 @@ sub _init_charsets {
         'shift-jis'               => 'jcode',
         'shift_jis'               => 'jcode',
         'iso-2022-jp'             => 'jcode',
+        'iso_2022_jp'             => 'jcode',
         'jis'                     => 'jcode',
         'euc-jp'                  => 'jcode',
     };
@@ -749,7 +757,7 @@ sub _list_unicode_map8_charsets {
 
 =head1 VERSION
 
-1.09 2001.08.22
+1.10 2005.05.22
 
 =head1 COPYRIGHT
 

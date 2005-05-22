@@ -3,3 +3,4 @@ Makefile.PL
 README
 lib/Unicode/MapUTF8.pm
 t/01_unicode_maputf8.t
+META.yml                                 Module meta-data (added by MakeMaker)

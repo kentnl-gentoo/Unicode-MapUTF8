@@ -1,5 +1,17 @@
 Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
 
+1.10 2005.05.22 - Fixed bug in conversion of ISO-2022-JP to UTF-8.
+                  Problem and fix found by Masahiro HONMA
+                  <masahiro.honma@tsutaya.co.jp>.
+
+                  Similar bugs in conversions of shift_jis and euc-jp
+                  to UTF-8 corrected as well.
+
+1.09 2001.08.22 - Fixed multiple typo occurances of 'uft'
+                  where 'utf' was meant in code. Problem affected
+                  utf16 and utf7 encodings. Problem found
+                  by devon smith <devon@taller.PSCL.cwru.edu>
+
 1.08 2000.11.06 Added 'utf8_charset_alias' function to allow for runtime
                 setting of character set aliases. Added several alternate
                 names for 'sjis' (shiftjis, shift-jis, shift_jis, s-jis,
