@@ -2,7 +2,6 @@ package Unicode::MapUTF8;
 
 use strict;
 use Carp qw(confess croak carp);
-use Exporter;
 use Unicode::String;
 use Unicode::Map;
 use Unicode::Map8;
@@ -11,12 +10,13 @@ use Jcode;
 use vars qw ($VERSION @EXPORT @EXPORT_OK @EXPORT_TAGS @ISA);
 use subs qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias _init_charsets);
 
+require Exporter;
 BEGIN {
     @ISA         = qw(Exporter);
     @EXPORT      = qw ();
     @EXPORT_OK   = qw (utf8_supported_charset to_utf8 from_utf8 utf8_charset_alias);
     @EXPORT_TAGS = qw ();
-    $VERSION     = "1.10";
+    $VERSION     = "1.11";
 }
 
 ############################
@@ -26,176 +26,7 @@ my $_Charset_Names;
 my $_Charset_Aliases;
 _init_charsets;
 
-=head1 NAME
-
-Unicode::MapUTF8 - Conversions to and from arbitrary character sets and UTF8
-
-=head1 SYNOPSIS
-
- use Unicode::MapUTF8 qw(to_utf8 from_utf8 utf8_supported_charset);
-
- # Convert a string in 'ISO-8859-1' to 'UTF8'
- my $output = to_utf8({ -string => 'An example', -charset => 'ISO-8859-1' });
-
- # Convert a string in 'UTF8' encoding to encoding 'ISO-8859-1'
- my $other  = from_utf8({ -string => 'Other text', -charset => 'ISO-8859-1' });
-
- # List available character set encodings
- my @character_sets = utf8_supported_charset;
-
- # Add a character set alias
- utf8_charset_alias({ 'ms-japanese' => 'sjis' });
-
- # Convert between two arbitrary (but largely compatible) charset encodings
- # (SJIS to EUC-JP)
- my $utf8_string   = to_utf8({ -string =>$sjis_string, -charset => 'sjis'});
- my $euc_jp_string = from_utf8({ -string => $utf8_string, -charset => 'euc-jp' })
-
- # Verify that a specific character set is supported
- if (utf8_supported_charset('ISO-8859-1') {
-     # Yes
- }
-
-=head1 DESCRIPTION
-
-Provides an adapter layer between core routines for converting
-to and from UTF8 and other encodings. In essence, a way to give multiple
-existing Unicode modules a single common interface so you don't have to know
-the underlaying implementations to do simple UTF8 to-from other character set
-encoding conversions. As such, it wraps the Unicode::String, Unicode::Map8,
-Unicode::Map and Jcode modules in a standardized and simple API.
-
-This also provides general character set conversion operation based on UTF8 - it is
-possible to convert between any two compatible and supported character sets
-via a simple two step chaining of conversions.
-
-As with most things Perlish - if you give it a few big chunks of text to chew on
-instead of lots of small ones it will handle many more characters per second.
-
-By design, it can be easily extended to encompass any new charset encoding
-conversion modules that arrive on the scene.
-
-=head1 CHANGES
-
-1.10 2005.05.22 - Fixed bug in conversion of ISO-2022-JP to UTF-8.
-                  Problem and fix found by Masahiro HONMA
-                  <masahiro.honma@tsutaya.co.jp>.
-
-                  Similar bugs in conversions of shift_jis and euc-jp
-                  to UTF-8 fixed as well.
-                  
-1.09 2001.08.22 - Fixed multiple typo occurances of 'uft'
-                  where 'utf' was meant in code. Problem affected
-                  utf16 and utf7 encodings. Problem found
-                  by devon smith <devon@taller.PSCL.cwru.edu>
-
-1.08 2000.11.06 - Added 'utf8_charset_alias' function to
-                  allow for runtime setting of character
-                  set aliases. Added several alternate
-                  names for 'sjis' (shiftjis, shift-jis,
-                  shift_jis, s-jis, and s_jis).
-
-                  Corrected 'croak' messages for
-                  'from_utf8' functions to appropriate
-                  function name.
-
-                  Tightened up initialization encapsulation
-
-                  Corrected fatal problem in jcode from
-                  unicode internals. Problem and fix
-                  found by Brian Wisti <wbrian2@uswest.net>.
-
-1.07 2000.11.01 - Added 'croak' to use Carp declaration to
-                  fix error messages.  Problem and fix
-                  found by Brian Wisti
-                  <wbrian2@uswest.net>.
-
-1.06 2000.10.30 - Fix to handle change in stringification
-                  of overloaded objects between Perl 5.005
-                  and 5.6. Problem noticed by Brian Wisti
-                  <wbrian2@uswest.net>.
-
-1.05 2000.10.23 - Error in conversions from UTF8 to
-                  multibyte encodings corrected
-
-1.04 2000.10.23 - Additional diagnostic messages added
-                  for internal error conditions
-
-1.03 2000.10.22 - Bug fix for load time autodetction of
-                  Unicode::Map8 encodings
-
-1.02 2000.10.22 - Added load time autodetection of
-                  Unicode::Map8 supported character set
-                  encodings.
-
-                  Fixed internal calling error for some
-                  character sets with 'from_utf8'. Thanks
-                  goes to Ilia Lobsanov
-                  <ilia@lobsanov.com> for reporting this
-                  problem.
-
-1.01 2000.10.02 - Fixed handling of empty strings and
-                  added more identification for error
-                  messages.
-
-1.00 2000.09.29 - Pre-release version
-
-=head1 FUNCTIONS
-
-=cut
-
-######################################################################
-
-=over 4
-
-=item utf8_charset_alias({ $alias => $charset });
-
-Used for runtime assignment of character set aliases.
-
-Called with no parameters, returns a hash of defined aliases and the character sets
-they map to.
-
-Example:
-
-  my $aliases     = utf8_charset_alias;
-  my @alias_names = keys %$aliases;
-
-If called with ONE parameter, returns the name of the 'real' charset
-if the alias is defined. Returns undef if it is not found in the aliases.
-
-Example:
-
-    if (! utf8_charset_alias('VISCII')) {
-        # No alias for this
-    }
-
-If called with a list of 'alias' => 'charset' pairs, defines those aliases for use.
-
-Example:
-
-    utf8_charset_alias({ 'japanese' => 'sjis', 'japan' => 'sjis' });
-
-Note: It will croak if a passed pair does not map to a character set
-defined in the predefined set of character encoding. It is NOT
-allowed to alias something to another alias.
-
-Multiple character set aliases can be set with a single call.
-
-To clear an alias, pass a character set mapping of undef.
-
-Example:
-
-    utf8_charset_alias({ 'japanese' => undef });
-
-While an alias is set, the 'utf8_supported_charset' function
-will return the alias as if it were a predefined charset.
-
-Overriding a base defined character encoding with an alias
-will generate a warning message to STDERR.
-
-=back
-
-=cut
+##############
 
 sub utf8_charset_alias {
     if ($#_ == -1) {
@@ -245,35 +76,7 @@ sub _set_utf8_charset_alias {
     }
 }
 
-######################################################################
-
-=over 4
-
-=item utf8_supported_charset($charset_name);
-
-
-Returns true if the named charset is supported (including
-user defiend aliases).
-
-Returns false if it is not.
-
-Example:
-
-    if (! utf8_supported_charset('VISCII')) {
-        # No support yet
-    }
-
-If called in a list context with no parameters, it will return
-a list of all supported character set names (including user
-defined aliases).
-
-Example:
-
-    my @charsets = utf8_supported_charset;
-
-=back
-
-=cut
+####
 
 sub utf8_supported_charset {
     if ($#_ == -1 && wantarray) {
@@ -291,18 +94,7 @@ sub utf8_supported_charset {
     return 0;
 }
 
-######################################################################
-
-=over 4
-
-=item to_utf8({ -string => $string, -charset => $source_charset });
-
-
-Returns the string converted to UTF8 from the specified source charset.
-
-=back
-
-=cut
+####
 
 sub to_utf8 {
     my @parm_list = @_;
@@ -346,17 +138,7 @@ sub to_utf8 {
     }
 }
 
-######################################################################
-
-=over 4
-
-=item from_utf8({ -string => $string, -charset => $target_charset});
-
-Returns the string converted from UTF8 to the specified target charset.
-
-=back
-
-=cut
+####
 
 sub from_utf8 {
     my @parm_list = @_;
@@ -754,30 +536,5 @@ sub _list_unicode_map8_charsets {
 }
 
 ######################################################################
-
-=head1 VERSION
-
-1.10 2005.05.22
-
-=head1 COPYRIGHT
-
-Copyright September, 2000 Benjamin Franz. All rights reserved.
-
-This software is free software.  You can redistribute it
-and/or modify it under the same terms as Perl itself.
-
-=head1 AUTHOR
-
-Benjamin Franz <snowhare@nihongo.org>
-
-=head1 TODO
-
-Regression tests for Jcode, 2-byte encodings and encoding aliases
-
-=head1 SEE ALSO
-
-Unicode::String Unicode::Map8 Unicode::Map Jcode
-
-=cut
 
 1;
